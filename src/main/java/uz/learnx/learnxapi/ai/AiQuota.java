@@ -58,6 +58,9 @@ public class AiQuota {
 
     public void consume(UUID userId) {
         User user = users.get(userId);
+        if (user.bannedAt() != null) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "account_banned", "This account has been blocked");
+        }
         if (user.emailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "email_not_verified", "Confirm your email to use AI practice");
         }

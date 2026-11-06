@@ -18,4 +18,11 @@ public record User(
         Instant onboardedAt,
         Integer failedLoginAttempts,
         Instant lockedUntil,
-        Instant emailVerifiedAt) {}
+        Instant emailVerifiedAt,
+        String role,
+        Instant bannedAt) {
+
+    public boolean isAdmin() {
+        return "ADMIN".equals(role);
+    }
+}

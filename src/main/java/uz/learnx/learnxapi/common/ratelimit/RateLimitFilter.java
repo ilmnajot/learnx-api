@@ -41,12 +41,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 new Rule("refresh", Pattern.compile("/api/v1/auth/refresh"), r.refreshPerHour(), hour),
                 new Rule("password", Pattern.compile("/api/v1/auth/(forgot|reset)-password"), r.passwordPerHour(), hour),
                 new Rule("verify", Pattern.compile("/api/v1/(auth/verify-email|me/resend-verification)"), r.verifyPerHour(), hour),
-                new Rule("ai", Pattern.compile("/api/v1/(roleplay/[^/]+/turns|writing/improve)"), r.aiPerHour(), hour));
+                new Rule("ai", Pattern.compile("/api/v1/(roleplay/[^/]+/turns|writing/improve)"), r.aiPerHour(), hour),
+                new Rule("comment", Pattern.compile("/api/v1/comments/me"), r.commentPerHour(), hour));
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equals(request.getMethod());
+        return !"POST".equals(request.getMethod()) && !"PUT".equals(request.getMethod());
     }
 
     @Override

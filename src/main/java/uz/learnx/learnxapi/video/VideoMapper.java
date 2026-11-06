@@ -21,6 +21,7 @@ public interface VideoMapper {
                    v.speak_prompt, p.completed_at
             FROM videos v
             LEFT JOIN video_progress p ON p.video_id = v.id AND p.user_id = #{userId}
+            WHERE v.hidden_at IS NULL
             ORDER BY v.position
             """)
     List<VideoSummary> list(UUID userId);
@@ -30,7 +31,7 @@ public interface VideoMapper {
                    v.speak_prompt, p.completed_at
             FROM videos v
             LEFT JOIN video_progress p ON p.video_id = v.id AND p.user_id = #{userId}
-            WHERE v.id = #{videoId}
+            WHERE v.id = #{videoId} AND v.hidden_at IS NULL
             """)
     Optional<VideoSummary> find(@Param("userId") UUID userId, @Param("videoId") UUID videoId);
 

@@ -79,6 +79,7 @@ public class AuthService {
             users.recordFailedLogin(user.id(), MAX_FAILED_LOGINS, now.plus(LOCK_DURATION));
             throw invalidCredentials();
         }
+        requireNotBanned(user);
         users.clearFailedLogins(user.id());
         return openSession(user);
     }
@@ -97,7 +98,11 @@ public class AuthService {
             RefreshToken token = refreshTokens.findForUpdate(tokens.hash(rawToken)).orElseThrow(this::invalidSession);
             if (token.revokedAt() != null) {
                 if (token.rotatedAt() != null && token.rotatedAt().plus(ROTATION_GRACE).isAfter(now)) {
-                    return Optional.of(openSession(users.findById(token.userId()).orElseThrow(this::invalidSession)));
+                    User user = users.findById(token.userId()).orElseThrow(this::invalidSession);
+                    if (user.bannedAt() != null) {
+                        throw invalidSession();
+                    }
+                    return Optional.of(openSession(user));
                 }
                 refreshTokens.revokeAllForUser(token.userId(), now);
                 return Optional.<Session>empty();
@@ -105,10 +110,20 @@ public class AuthService {
             if (token.expiresAt().isBefore(now)) {
                 throw invalidSession();
             }
+            User user = users.findById(token.userId()).orElseThrow(this::invalidSession);
+            if (user.bannedAt() != null) {
+                throw invalidSession();
+            }
             refreshTokens.rotate(token.id(), now);
-            return Optional.of(openSession(users.findById(token.userId()).orElseThrow(this::invalidSession)));
+            return Optional.of(openSession(user));
         });
         return session.orElseThrow(this::invalidSession);
+    }
+
+    private static void requireNotBanned(User user) {
+        if (user.bannedAt() != null) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "account_banned", "This account has been blocked");
+        }
     }
 
     @Scheduled(cron = "0 17 3 * * *")

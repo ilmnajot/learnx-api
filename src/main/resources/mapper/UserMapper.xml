@@ -4,7 +4,7 @@
 
     <sql id="columns">
         id, email, password_hash, display_name, job_role, goal, level, native_language, timezone,
-        reminder_time, onboarded_at, failed_login_attempts, locked_until, email_verified_at
+        reminder_time, onboarded_at, failed_login_attempts, locked_until, email_verified_at, role, banned_at
     </sql>
 
     <select id="findById" resultType="uz.learnx.learnxapi.user.User">

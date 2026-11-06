@@ -98,3 +98,8 @@ learnx:
     password-per-hour: ${LEARNX_LIMIT_PASSWORD:20}
     verify-per-hour: ${LEARNX_LIMIT_VERIFY:60}
     ai-per-hour: ${LEARNX_LIMIT_AI:300}
+    comment-per-hour: ${LEARNX_LIMIT_COMMENT:30}
+  admin:
+    emails: ${LEARNX_ADMIN_EMAILS:}
+  public-site:
+    cache-ttl: 60s

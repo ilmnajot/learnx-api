@@ -53,6 +53,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/*")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/**")
+                        .permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info")
                         .permitAll()
                         .anyRequest()
@@ -80,7 +82,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(properties.cors().allowedOrigins());
-        config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

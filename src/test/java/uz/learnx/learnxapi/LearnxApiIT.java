@@ -32,7 +32,8 @@ import tools.jackson.databind.json.JsonMapper;
             "learnx.rate-limit.password-per-hour=100000",
             "learnx.rate-limit.verify-per-hour=100000",
             "learnx.rate-limit.ai-per-hour=100000",
-            "learnx.ai.global-daily-limit=100000"
+            "learnx.ai.global-daily-limit=100000",
+            "learnx.rate-limit.comment-per-hour=100000"
         })
 @Testcontainers
 @Import(RecordingEmails.Config.class)

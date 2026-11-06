@@ -44,7 +44,9 @@ class SmtpEmailSenderTest {
                 new LearnxProperties.Cors(List.of("http://localhost")),
                 new LearnxProperties.Ai("", "m", Duration.ofSeconds(1), 1, 1),
                 new LearnxProperties.Mail("LearnX <no-reply@example.test>", "https://app.example.test/", requireSmtp),
-                new LearnxProperties.RateLimit(1, 1, 1, 1, 1, 1));
+                new LearnxProperties.RateLimit(1, 1, 1, 1, 1, 1, 1),
+                new LearnxProperties.Admin(List.of()),
+                new LearnxProperties.PublicSite(Duration.ofSeconds(1)));
     }
 
     @Test

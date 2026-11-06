@@ -18,7 +18,9 @@ public record LearnxProperties(
         @Valid @NotNull Cors cors,
         @Valid @NotNull Ai ai,
         @Valid @NotNull Mail mail,
-        @Valid @NotNull RateLimit rateLimit) {
+        @Valid @NotNull RateLimit rateLimit,
+        @Valid @NotNull Admin admin,
+        @Valid @NotNull PublicSite publicSite) {
 
     public record Jwt(
             @NotBlank @Size(min = 32) String secret,
@@ -52,5 +54,11 @@ public record LearnxProperties(
             @Min(1) int refreshPerHour,
             @Min(1) int passwordPerHour,
             @Min(1) int verifyPerHour,
-            @Min(1) int aiPerHour) {}
+            @Min(1) int aiPerHour,
+            @Min(1) int commentPerHour) {}
+
+    /** @param emails become admins once their email is confirmed */
+    public record Admin(@NotNull List<String> emails) {}
+
+    public record PublicSite(@NotNull Duration cacheTtl) {}
 }

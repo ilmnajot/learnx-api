@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import uz.learnx.learnxapi.admin.AdminBootstrap;
 import uz.learnx.learnxapi.common.error.ApiException;
 import uz.learnx.learnxapi.email.AccountEmails;
 import uz.learnx.learnxapi.user.User;
@@ -34,10 +35,12 @@ public class AccountService implements VerificationSender {
     private final AccountEmails emails;
     private final PasswordEncoder passwords;
     private final TransactionTemplate tx;
+    private final AdminBootstrap admins;
     private final Clock clock;
 
     AccountService(UserMapper users, EmailTokenMapper tokens, RefreshTokenMapper refreshTokens,
             TokenService tokenService, AccountEmails emails, PasswordEncoder passwords, TransactionTemplate tx,
+            AdminBootstrap admins,
             Clock clock) {
         this.users = users;
         this.tokens = tokens;
@@ -46,6 +49,7 @@ public class AccountService implements VerificationSender {
         this.emails = emails;
         this.passwords = passwords;
         this.tx = tx;
+        this.admins = admins;
         this.clock = clock;
     }
 
@@ -62,6 +66,7 @@ public class AccountService implements VerificationSender {
         Instant now = Instant.now(clock);
         UUID userId = tokens.consume(tokenService.hash(token), VERIFY, now).orElseThrow(AccountService::invalidLink);
         users.markVerified(userId, now);
+        admins.promoteConfigured();
     }
 
     /** Responds the same way whether or not the account exists, so this can't be used to discover who has one. */
@@ -80,6 +85,7 @@ public class AccountService implements VerificationSender {
             users.clearFailedLogins(userId);
             users.markVerified(userId, now);
             refreshTokens.revokeAllForUser(userId, now);
+            admins.promoteConfigured();
         });
     }
 
