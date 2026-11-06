@@ -34,7 +34,7 @@ public class RuleBasedTutor implements AiTutor {
             Rule.of("\\bdepends of\\b", "depends on", "\"depend\" feʼli \"on\" bilan ishlatiladi: \"depends on\"."),
             Rule.of("\\bdiscuss about\\b", "discuss", "\"discuss\" dan keyin \"about\" kerak emas."),
             Rule.of("\\bexplain me\\b", "explain to me", "\"explain to me\" deb ayting."),
-            Rule.of("\\bi will send you tomorrow\\b", "I will send it to you tomorrow",
+            Rule.of("\\bi will send you tomorrow[.!?]?$", "I will send it to you tomorrow",
                     "Nimani yuborishni koʻrsating: \"send it to you\"."),
             Rule.of("\\bpeoples\\b", "people", "\"people\" soʻzi oʻzi koʻplikda, \"s\" qoʻshilmaydi."),
             Rule.of("\\binformations\\b", "information", "\"information\" sanalmaydi, \"s\" qoʻshilmaydi."));

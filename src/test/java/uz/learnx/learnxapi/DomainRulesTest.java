@@ -76,6 +76,15 @@ class DomainRulesTest {
     }
 
     @Test
+    void ruleBasedTutorOnlyAddsTheObjectWhenTheSentenceHasNone() {
+        RuleBasedTutor tutor = new RuleBasedTutor();
+        assertThat(tutor.improveMessage("i will send you tomorrow", "uz").improved())
+                .isEqualTo("I will send it to you tomorrow.");
+        assertThat(tutor.improveMessage("i will send you tomorrow the report", "uz").improved())
+                .isEqualTo("I will send you tomorrow the report.");
+    }
+
+    @Test
     void ruleBasedTutorRestoresBaseVerbAfterDidNot() {
         assertThat(new RuleBasedTutor().improveMessage("I didn't merged it", "uz").improved())
                 .isEqualTo("I didn't merge it.");
