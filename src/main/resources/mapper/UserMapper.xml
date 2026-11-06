@@ -4,7 +4,7 @@
 
     <sql id="columns">
         id, email, password_hash, display_name, job_role, goal, level, native_language, timezone,
-        reminder_time, onboarded_at, failed_login_attempts, locked_until
+        reminder_time, onboarded_at, failed_login_attempts, locked_until, email_verified_at
     </sql>
 
     <select id="findById" resultType="uz.learnx.learnxapi.user.User">
@@ -49,6 +49,14 @@
             failed_login_attempts = CASE WHEN failed_login_attempts + 1 >= #{maxAttempts} THEN 0
                                          ELSE failed_login_attempts + 1 END
         WHERE id = #{id}
+    </update>
+
+    <update id="markVerified">
+        UPDATE users SET email_verified_at = COALESCE(email_verified_at, #{at}), updated_at = now() WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE users SET password_hash = #{passwordHash}, updated_at = now() WHERE id = #{id}
     </update>
 
     <update id="clearFailedLogins">

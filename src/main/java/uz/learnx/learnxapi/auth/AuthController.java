@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import uz.learnx.learnxapi.common.config.LearnxProperties;
 import uz.learnx.learnxapi.user.UserView;
@@ -33,17 +34,47 @@ public class AuthController {
 
     public record AuthResponse(String accessToken, UserView user) {}
 
+    record TokenRequest(@NotBlank @Size(max = 128) String token) {}
+
+    record ForgotPasswordRequest(@NotBlank @Email @Size(max = 254) String email) {}
+
+    record ResetPasswordRequest(
+            @NotBlank @Size(max = 128) String token,
+            @NotBlank @Size(min = 8, max = 72) String password) {}
+
     private final AuthService auth;
+    private final AccountService accounts;
     private final LearnxProperties.Jwt jwt;
 
-    AuthController(AuthService auth, LearnxProperties properties) {
+    AuthController(AuthService auth, AccountService accounts, LearnxProperties properties) {
         this.auth = auth;
+        this.accounts = accounts;
         this.jwt = properties.jwt();
     }
 
     @PostMapping("/register")
     ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return respond(HttpStatus.CREATED, auth.register(request.email(), request.password(), request.displayName()));
+        AuthService.Session session = auth.register(request.email(), request.password(), request.displayName());
+        accounts.send(session.user());
+        return respond(HttpStatus.CREATED, session);
+    }
+
+    @PostMapping("/verify-email")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void verifyEmail(@Valid @RequestBody TokenRequest request) {
+        accounts.verifyEmail(request.token());
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        accounts.requestPasswordReset(request.email());
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        accounts.resetPassword(request.token(), request.password());
     }
 
     @PostMapping("/login")

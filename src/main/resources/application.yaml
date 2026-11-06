@@ -20,11 +20,24 @@ spring:
       enabled: true
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  mail:
+    host: ${LEARNX_SMTP_HOST:}
+    port: ${LEARNX_SMTP_PORT:587}
+    username: ${LEARNX_SMTP_USERNAME:}
+    password: ${LEARNX_SMTP_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": ${LEARNX_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${LEARNX_SMTP_STARTTLS:true}
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 10000
+      "[mail.smtp.writetimeout]": 10000
 
 server:
   port: ${PORT:8080}
   shutdown: graceful
-  forward-headers-strategy: framework
+  # Native means Tomcat reads X-Forwarded-For only from internal proxies, from the right, so visitors can't fake an
+  # IP to dodge rate limits. If the reverse proxy isn't on a private network, set server.tomcat.remoteip.internal-proxies.
+  forward-headers-strategy: native
   error:
     include-message: never
     include-stacktrace: never
@@ -38,6 +51,10 @@ mybatis:
     default-statement-timeout: 10
 
 management:
+  health:
+    # A mail outage must not mark the whole API unhealthy and get it restarted.
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -67,3 +84,17 @@ learnx:
     model: ${LEARNX_AI_MODEL:claude-opus-5-5}
     timeout: 30s
     daily-request-limit: ${LEARNX_AI_DAILY_LIMIT:50}
+    # Ceiling across all learners per day. Also set a spending limit in the Anthropic console.
+    global-daily-limit: ${LEARNX_AI_GLOBAL_DAILY_LIMIT:1000}
+  mail:
+    from: ${LEARNX_MAIL_FROM:LearnX <no-reply@localhost>}
+    public-url: ${LEARNX_PUBLIC_URL:http://localhost:5173}
+    require-smtp: false
+  # Per IP address. Set high enough that an office sharing one address isn't blocked.
+  rate-limit:
+    register-per-hour: ${LEARNX_LIMIT_REGISTER:20}
+    login-per-hour: ${LEARNX_LIMIT_LOGIN:60}
+    refresh-per-hour: ${LEARNX_LIMIT_REFRESH:600}
+    password-per-hour: ${LEARNX_LIMIT_PASSWORD:20}
+    verify-per-hour: ${LEARNX_LIMIT_VERIFY:60}
+    ai-per-hour: ${LEARNX_LIMIT_AI:300}

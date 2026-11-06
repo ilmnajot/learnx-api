@@ -17,4 +17,5 @@ public record User(
         LocalTime reminderTime,
         Instant onboardedAt,
         Integer failedLoginAttempts,
-        Instant lockedUntil) {}
+        Instant lockedUntil,
+        Instant emailVerifiedAt) {}

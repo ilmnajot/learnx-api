@@ -4,6 +4,10 @@ spring:
     url: ${LEARNX_DB_URL}
     username: ${LEARNX_DB_USERNAME}
     password: ${LEARNX_DB_PASSWORD}
+  mail:
+    host: ${LEARNX_SMTP_HOST}
+    username: ${LEARNX_SMTP_USERNAME}
+    password: ${LEARNX_SMTP_PASSWORD}
 
 learnx:
   jwt:
@@ -11,6 +15,10 @@ learnx:
     secure-cookie: true
   cors:
     allowed-origins: ${LEARNX_ALLOWED_ORIGINS}
+  mail:
+    from: ${LEARNX_MAIL_FROM}
+    public-url: ${LEARNX_PUBLIC_URL}
+    require-smtp: true
 
 management:
   endpoints:

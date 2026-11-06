@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -23,8 +24,18 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Exercises the real HTTP API, security, MyBatis mappers and migrations against real PostgreSQL. */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "learnx.ai.api-key=")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+            "learnx.ai.api-key=",
+            "learnx.rate-limit.register-per-hour=100000",
+            "learnx.rate-limit.login-per-hour=100000",
+            "learnx.rate-limit.refresh-per-hour=100000",
+            "learnx.rate-limit.password-per-hour=100000",
+            "learnx.rate-limit.verify-per-hour=100000",
+            "learnx.rate-limit.ai-per-hour=100000",
+            "learnx.ai.global-daily-limit=100000"
+        })
 @Testcontainers
+@Import(RecordingEmails.Config.class)
 class LearnxApiIT {
 
     @Container
@@ -39,6 +50,9 @@ class LearnxApiIT {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    RecordingEmails emails;
 
     private record Reply(int status, JsonNode body, String setCookie) {}
 
@@ -62,12 +76,133 @@ class LearnxApiIT {
                 response.headers().firstValue("Set-Cookie").map(c -> c.split(";")[0]).orElse(null));
     }
 
+    /** A learner who has confirmed their email, which is what most tests need. */
     private Account register() throws Exception {
+        Account account = registerUnconfirmed();
+        jdbc.update("UPDATE users SET email_verified_at = now() WHERE email = ?", account.email());
+        return account;
+    }
+
+    private Account registerUnconfirmed() throws Exception {
         String email = "user-" + UUID.randomUUID() + "@example.com";
         Reply reply = call("POST", "/auth/register", null,
                 Map.of("email", email, "password", "test-password-1", "displayName", "Test User"));
         assertThat(reply.status()).isEqualTo(201);
         return new Account(reply.body().get("accessToken").asString(), reply.setCookie(), email);
+    }
+
+    @Test
+    void newAccountsMustConfirmTheirEmailBeforeUsingAi() throws Exception {
+        Account account = registerUnconfirmed();
+        assertThat(call("GET", "/me", account.token(), null).body().get("emailVerified").asBoolean()).isFalse();
+
+        Map<String, String> text = Map.of("text", "i have problem");
+        Reply blocked = call("POST", "/writing/improve", account.token(), text);
+        assertThat(blocked.status()).isEqualTo(403);
+        assertThat(blocked.body().get("code").asString()).isEqualTo("email_not_verified");
+        String session = call("POST", "/lessons/" + firstLessonId(account.token()) + "/roleplay", account.token(), null)
+                .body().get("sessionId").asString();
+        assertThat(call("POST", "/roleplay/" + session + "/turns", account.token(), text).status()).isEqualTo(403);
+
+        String token = emails.awaitToken(account.email(), 1);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", token)).status()).isEqualTo(204);
+
+        assertThat(call("GET", "/me", account.token(), null).body().get("emailVerified").asBoolean()).isTrue();
+        assertThat(call("POST", "/writing/improve", account.token(), text).status()).isEqualTo(200);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", token)).status()).isEqualTo(400);
+    }
+
+    @Test
+    void unconfirmedLearnersCanStillPractiseWithoutAi() throws Exception {
+        Account account = registerUnconfirmed();
+        String lesson = firstLessonId(account.token());
+        assertThat(call("POST", "/lessons/" + lesson + "/complete", account.token(), null).status()).isEqualTo(200);
+    }
+
+    @Test
+    void emailLinksNeverContainTheDisplayName() throws Exception {
+        String email = "user-" + UUID.randomUUID() + "@example.com";
+        call("POST", "/auth/register", null, Map.of("email", email, "password", "test-password-1",
+                "displayName", "Visit evil.example now"));
+        emails.awaitToken(email, 1);
+        assertThat(emails.to(email).getFirst().body()).doesNotContain("evil.example");
+    }
+
+    @Test
+    void resendingRetiresTheOlderLink() throws Exception {
+        Account account = registerUnconfirmed();
+        String first = emails.awaitToken(account.email(), 1);
+        assertThat(call("POST", "/me/resend-verification", account.token(), null).status()).isEqualTo(202);
+        String second = emails.awaitToken(account.email(), 2);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", first)).status()).isEqualTo(400);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", second)).status()).isEqualTo(204);
+    }
+
+    @Test
+    void expiredAndMadeUpLinksAreRejected() throws Exception {
+        Account account = registerUnconfirmed();
+        String token = emails.awaitToken(account.email(), 1);
+        jdbc.update("UPDATE email_tokens SET expires_at = now() - interval '1 minute'");
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", token)).status()).isEqualTo(400);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", "made-up")).status()).isEqualTo(400);
+    }
+
+    @Test
+    void passwordResetChangesThePasswordAndSignsOutEverySession() throws Exception {
+        Account account = register();
+        assertThat(call("POST", "/auth/forgot-password", null, Map.of("email", account.email().toUpperCase())).status())
+                .isEqualTo(202);
+        // The sign-up confirmation arrives first, so the reset link is the second email.
+        String token = emails.awaitToken(account.email(), 2);
+
+        Map<String, String> tooShort = Map.of("token", token, "password", "short");
+        assertThat(call("POST", "/auth/reset-password", null, tooShort).status()).isEqualTo(400);
+
+        Map<String, String> reset = Map.of("token", token, "password", "brand-new-password");
+        assertThat(call("POST", "/auth/reset-password", null, reset).status()).isEqualTo(204);
+
+        assertThat(call("POST", "/auth/login", null, Map.of("email", account.email(), "password", "test-password-1")).status())
+                .isEqualTo(401);
+        assertThat(call("POST", "/auth/login", null, Map.of("email", account.email(), "password", "brand-new-password")).status())
+                .isEqualTo(200);
+        assertThat(call("POST", "/auth/refresh", null, account.cookie(), null).status()).isEqualTo(401);
+        assertThat(call("POST", "/auth/reset-password", null, reset).status()).isEqualTo(400);
+    }
+
+    @Test
+    void passwordResetUnlocksALockedAccountAndConfirmsTheEmail() throws Exception {
+        Account account = registerUnconfirmed();
+        for (int i = 0; i < 5; i++) {
+            call("POST", "/auth/login", null, Map.of("email", account.email(), "password", "wrong-password"));
+        }
+        call("POST", "/auth/forgot-password", null, Map.of("email", account.email()));
+        // The registration email arrives first, so this waits for the second one.
+        String token = emails.awaitToken(account.email(), 2);
+        call("POST", "/auth/reset-password", null, Map.of("token", token, "password", "brand-new-password"));
+        Reply login = call("POST", "/auth/login", null, Map.of("email", account.email(), "password", "brand-new-password"));
+        assertThat(login.status()).isEqualTo(200);
+        assertThat(login.body().get("user").get("emailVerified").asBoolean()).isTrue();
+    }
+
+    @Test
+    void forgotPasswordDoesNotRevealWhetherAnAccountExists() throws Exception {
+        String unknown = "nobody-" + UUID.randomUUID() + "@example.com";
+        Reply reply = call("POST", "/auth/forgot-password", null, Map.of("email", unknown));
+        assertThat(reply.status()).isEqualTo(202);
+        assertThat(reply.body().isNull()).isTrue();
+        assertThat(emails.to(unknown)).isEmpty();
+    }
+
+    @Test
+    void anInboxCannotBeFloodedWithResetEmails() throws Exception {
+        Account account = register();
+        for (int i = 0; i < 6; i++) {
+            assertThat(call("POST", "/auth/forgot-password", null, Map.of("email", account.email())).status()).isEqualTo(202);
+        }
+        // One sign-up confirmation plus the hourly maximum of three reset emails.
+        emails.awaitToken(account.email(), 4);
+        Thread.sleep(300);
+        assertThat(emails.to(account.email())).hasSize(4);
     }
 
     private String firstLessonId(String token) throws Exception {

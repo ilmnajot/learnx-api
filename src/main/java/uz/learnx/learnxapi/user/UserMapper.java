@@ -31,4 +31,8 @@ public interface UserMapper {
             @Param("lockUntil") Instant lockUntil);
 
     void clearFailedLogins(UUID id);
+
+    void markVerified(@Param("id") UUID id, @Param("at") Instant at);
+
+    void updatePassword(@Param("id") UUID id, @Param("passwordHash") String passwordHash);
 }

@@ -4,10 +4,13 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.time.LocalTime;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import uz.learnx.learnxapi.common.security.CurrentUserId;
 import uz.learnx.learnxapi.user.UserService.ProfileChanges;
@@ -25,14 +28,22 @@ class UserController {
             Boolean onboarded) {}
 
     private final UserService users;
+    private final VerificationSender verification;
 
-    UserController(UserService users) {
+    UserController(UserService users, VerificationSender verification) {
         this.users = users;
+        this.verification = verification;
     }
 
     @GetMapping
     UserView me(@CurrentUserId UUID userId) {
         return UserView.of(users.get(userId));
+    }
+
+    @PostMapping("/resend-verification")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    void resendVerification(@CurrentUserId UUID userId) {
+        verification.send(users.get(userId));
     }
 
     @PatchMapping

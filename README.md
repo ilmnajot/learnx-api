@@ -69,7 +69,8 @@ All routes are under `/api/v1` and need a bearer token, except the `auth` routes
 | Method and path | Purpose |
 |---|---|
 | `POST /auth/register`, `/login`, `/refresh`, `/logout` | Session handling; the refresh token is an HttpOnly cookie |
-| `GET`, `PATCH /me` | Profile and onboarding |
+| `POST /auth/verify-email`, `/forgot-password`, `/reset-password` | Email confirmation and password reset |
+| `GET`, `PATCH /me`, `POST /me/resend-verification` | Profile, onboarding and confirmation email |
 | `GET /placement/questions`, `POST /placement/submit` | Placement test |
 | `GET /today`, `GET /progress` | Home and progress data |
 | `GET /topics`, `GET /lessons/{id}`, `POST /lessons/{id}/complete` | Course |
@@ -86,9 +87,18 @@ Set `SPRING_PROFILES_ACTIVE=prod` and the variables listed in `.env.example`. St
 
 Serve the API over HTTPS. Health probes are at `/actuator/health/liveness` and `/actuator/health/readiness`.
 
+**Email:** works with any SMTP provider, such as Resend or Brevo. Verify your sending domain with the provider, or confirmation emails will land in spam or be rejected. Without a mail server in development, emails and their links are written to the log.
+
+**Abuse protection:**
+
+- Per-IP limits on sign-up, login, password reset and AI requests live in `learnx.rate-limit`. Each can be overridden with a `LEARNX_LIMIT_*` variable.
+- AI requires a confirmed email. A per-learner limit (`LEARNX_AI_DAILY_LIMIT`) and a limit across everyone (`LEARNX_AI_GLOBAL_DAILY_LIMIT`) also apply.
+- Set a spending limit in the Anthropic console too, as the final safeguard.
+
+**Reverse proxy:** client IPs come from `X-Forwarded-For`, trusted only when the request arrives from a private-network proxy, and read from the right so visitors can't fake them. If your proxy has a public address, set `server.tomcat.remoteip.internal-proxies`. Behind Cloudflare, also make sure the proxy passes on the real visitor address, or every visitor counts as one IP.
+
 ## Not built yet
 
 - Telegram reminders and Telegram login, which need a bot token
 - Payments
-- Rate limiting per IP address (login attempts are limited per account)
 - Server-side speech recognition (the frontend uses the browser's)
