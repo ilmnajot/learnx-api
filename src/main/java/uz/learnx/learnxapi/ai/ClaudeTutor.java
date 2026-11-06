@@ -107,7 +107,6 @@ public class ClaudeTutor implements AiTutor {
                 .system(system)
                 .outputConfig(outputConfig)
                 .addUserMessage(prompt);
-                .build();
         if (MODELS_WITH_SERVER_FALLBACK.contains(model)) {
             // If a safety classifier declines the request, the API routes it to another model.
             params.putAdditionalHeader("anthropic-beta", "server-side-fallback-2026-07-01")
