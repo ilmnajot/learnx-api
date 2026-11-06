@@ -108,4 +108,16 @@ class ClaudeTutorTest {
         modelText = "{\"improved\":\" \",\"tips\":[]}";
         assertThatThrownBy(() -> tutor.improveMessage("hello", "uz")).isInstanceOf(TutorUnavailableException.class);
     }
+
+    @Test
+    void omitsServerFallbackForModelsWithoutIt() {
+        AnthropicClient client = AnthropicOkHttpClient.builder()
+                .apiKey("test-key")
+                .baseUrl("http://127.0.0.1:" + server.getAddress().getPort())
+                .maxRetries(0)
+                .build();
+        new ClaudeTutor(client, "claude-haiku-5-5", JSON).roleplayTurn(request("hello"));
+        assertThat(JSON.readTree(requestBody.get()).has("fallbacks")).isFalse();
+        assertThat(betaHeader.get()).isNull();
+    }
 }

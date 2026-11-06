@@ -9,6 +9,7 @@ import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.StopReason;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -20,6 +21,8 @@ public class ClaudeTutor implements AiTutor {
     private static final long MAX_TOKENS = 4000L;
     private static final int MAX_TIPS = 2;
     private static final Map<String, String> LANGUAGE_NAMES = Map.of("uz", "Uzbek", "ru", "Russian", "en", "English");
+    private static final Set<String> MODELS_WITH_SERVER_FALLBACK =
+            Set.of("claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5");
 
     private static final String ROLEPLAY_SYSTEM = """
             You coach IT professionals in spoken workplace English inside LearnX, a short daily practice app. \
@@ -98,17 +101,19 @@ public class ClaudeTutor implements AiTutor {
     }
 
     private String complete(String system, String prompt, OutputConfig outputConfig) {
-        MessageCreateParams params = MessageCreateParams.builder()
+        MessageCreateParams.Builder params = MessageCreateParams.builder()
                 .model(model)
                 .maxTokens(MAX_TOKENS)
                 .system(system)
                 .outputConfig(outputConfig)
-                .addUserMessage(prompt)
-                // Server-side fallback: if a classifier declines the request, the API routes it to another model.
-                .putAdditionalHeader("anthropic-beta", "server-side-fallback-2026-07-01")
-                .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
+                .addUserMessage(prompt);
                 .build();
-        Message response = client.messages().create(params);
+        if (MODELS_WITH_SERVER_FALLBACK.contains(model)) {
+            // If a safety classifier declines the request, the API routes it to another model.
+            params.putAdditionalHeader("anthropic-beta", "server-side-fallback-2026-07-01")
+                    .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"));
+        }
+        Message response = client.messages().create(params.build());
         if (response.stopReason().filter(StopReason.REFUSAL::equals).isPresent()) {
             throw new TutorUnavailableException("The model declined the request");
         }
