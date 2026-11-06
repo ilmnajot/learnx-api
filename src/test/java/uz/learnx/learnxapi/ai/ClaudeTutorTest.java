@@ -120,4 +120,19 @@ class ClaudeTutorTest {
         assertThat(JSON.readTree(requestBody.get()).has("fallbacks")).isFalse();
         assertThat(betaHeader.get()).isNull();
     }
+
+    @Test
+    void asksForTipsOnTheLatestMessageOnly() {
+        tutor.roleplayTurn(request("it is not finish"));
+        assertThat(JSON.readTree(requestBody.get()).get("system").toString()).contains("latest message only");
+    }
+
+    @Test
+    void asksForOfficialSpellingOnlyInUzbek() {
+        tutor.improveMessage("hello", "uz");
+        assertThat(JSON.readTree(requestBody.get()).get("system").toString()).contains("official Latin spelling");
+        tutor.improveMessage("hello", "ru");
+        String russian = JSON.readTree(requestBody.get()).get("system").toString();
+        assertThat(russian).contains("Russian").doesNotContain("official Latin spelling");
+    }
 }
