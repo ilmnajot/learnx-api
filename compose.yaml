@@ -1,0 +1,22 @@
+name: learnx
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: learnx
+      POSTGRES_USER: learnx
+      POSTGRES_PASSWORD: ${LEARNX_DB_PASSWORD:-learnx_dev}
+    ports:
+      # 5433 avoids the PostgreSQL server already using 5432 on the host.
+      - "5433:5432"
+    volumes:
+      - learnx_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U learnx -d learnx"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  learnx_pg:

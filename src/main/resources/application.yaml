@@ -1,3 +1,68 @@
 spring:
   application:
     name: learnx-api
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${LEARNX_DB_URL:jdbc:postgresql://localhost:5433/learnx}
+    username: ${LEARNX_DB_USERNAME:learnx}
+    password: ${LEARNX_DB_PASSWORD:learnx_dev}
+    hikari:
+      maximum-pool-size: ${LEARNX_DB_POOL_SIZE:20}
+      minimum-idle: 2
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: non_null
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-handlers-package: uz.learnx.learnxapi.common.mybatis
+  configuration:
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
+    default-statement-timeout: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+
+learnx:
+  jwt:
+    # Development-only default. Production must set LEARNX_JWT_SECRET (at least 32 characters).
+    secret: ${LEARNX_JWT_SECRET:dev-only-secret-change-me-before-any-deployment}
+    access-ttl: 15m
+    refresh-ttl: 30d
+    secure-cookie: ${LEARNX_SECURE_COOKIE:false}
+  cors:
+    allowed-origins: ${LEARNX_ALLOWED_ORIGINS:http://localhost:5173}
+  ai:
+    # With no API key, the built-in rule-based tutor is used.
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${LEARNX_AI_MODEL:claude-opus-5-5}
+    timeout: 30s
+    daily-request-limit: ${LEARNX_AI_DAILY_LIMIT:50}
