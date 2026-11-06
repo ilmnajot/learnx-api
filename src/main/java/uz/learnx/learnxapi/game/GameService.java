@@ -24,7 +24,8 @@ public class GameService {
 
     public enum Game {
         PHRASE_MATCH,
-        WORD_ORDER
+        WORD_ORDER,
+        SHADOWING
     }
 
     public record Result(int points, int gamesScoredToday) {}

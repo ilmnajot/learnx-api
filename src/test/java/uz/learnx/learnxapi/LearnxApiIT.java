@@ -248,6 +248,15 @@ class LearnxApiIT {
     }
 
     @Test
+    void shadowingResultsCountAsPracticeWithCappedPoints() throws Exception {
+        String token = register().token();
+        Reply result = call("POST", "/games/results", token, Map.of("game", "SHADOWING", "correct", 3, "total", 5));
+        assertThat(result.status()).isEqualTo(200);
+        assertThat(result.body().get("points").asInt()).isEqualTo(3);
+        assertThat(call("GET", "/today", token, null).body().get("streak").asInt()).isEqualTo(1);
+    }
+
+    @Test
     void squadFlowSharesProgressBetweenMembers() throws Exception {
         Account owner = register();
         Account member = register();
