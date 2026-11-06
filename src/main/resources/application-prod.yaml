@@ -1,0 +1,19 @@
+# Activate with SPRING_PROFILES_ACTIVE=prod. No insecure defaults: startup fails until these are set.
+spring:
+  datasource:
+    url: ${LEARNX_DB_URL}
+    username: ${LEARNX_DB_USERNAME}
+    password: ${LEARNX_DB_PASSWORD}
+
+learnx:
+  jwt:
+    secret: ${LEARNX_JWT_SECRET}
+    secure-cookie: true
+  cors:
+    allowed-origins: ${LEARNX_ALLOWED_ORIGINS}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

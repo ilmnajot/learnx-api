@@ -59,7 +59,8 @@ learnx:
     refresh-ttl: 30d
     secure-cookie: ${LEARNX_SECURE_COOKIE:false}
   cors:
-    allowed-origins: ${LEARNX_ALLOWED_ORIGINS:http://localhost:5173}
+    # Development default: any local port. Production must list its exact origins.
+    allowed-origins: ${LEARNX_ALLOWED_ORIGINS:http://localhost:*}
   ai:
     # With no API key, the built-in rule-based tutor is used.
     api-key: ${ANTHROPIC_API_KEY:}

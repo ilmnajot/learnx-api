@@ -234,15 +234,15 @@ FROM (VALUES
 JOIN lessons l ON l.slug = v.lesson;
 
 INSERT INTO placement_questions (prompt, options, correct_index, weight, position) VALUES
-    ('She ___ a developer.', ARRAY['is', 'are', 'be', 'am'], 0, 1, 1),
-    ('We ___ a meeting every Monday.', ARRAY['has', 'have', 'having', 'is have'], 1, 1, 2),
-    ('The server ___ working right now.', ARRAY['not is', 'don''t', 'isn''t', 'doesn''t'], 2, 1, 3),
-    ('I ___ this bug yesterday.', ARRAY['fix', 'fixes', 'fixing', 'fixed'], 3, 1, 4),
-    ('I have ___ problem with the database.', ARRAY['a', 'an', 'the some', 'any'], 0, 1, 5),
-    ('The tests ___ when I arrived this morning.', ARRAY['run', 'were running', 'are run', 'runs'], 1, 2, 6),
-    ('We ___ this feature since January.', ARRAY['build', 'are building', 'have been building', 'built'], 2, 2, 7),
-    ('If the build fails, we ___ the release.', ARRAY['would delay', 'delayed', 'delaying', 'will delay'], 3, 2, 8),
-    ('This depends ___ the client''s decision.', ARRAY['on', 'of', 'from', 'about'], 0, 2, 9),
+    ('She ___ a developer.', ARRAY['are', 'is', 'be', 'am'], 1, 1, 1),
+    ('We ___ a meeting every Monday.', ARRAY['has', 'is have', 'having', 'have'], 3, 1, 2),
+    ('The server ___ working right now.', ARRAY['isn''t', 'not is', 'don''t', 'doesn''t'], 0, 1, 3),
+    ('I ___ this bug yesterday.', ARRAY['fix', 'fixes', 'fixed', 'fixing'], 2, 1, 4),
+    ('I have ___ problem with the database.', ARRAY['an', 'the some', 'a', 'any'], 2, 1, 5),
+    ('The tests ___ when I arrived this morning.', ARRAY['were running', 'run', 'are run', 'runs'], 0, 2, 6),
+    ('We ___ this feature since January.', ARRAY['build', 'are building', 'built', 'have been building'], 3, 2, 7),
+    ('If the build fails, we ___ the release.', ARRAY['would delay', 'will delay', 'delaying', 'delayed'], 1, 2, 8),
+    ('This depends ___ the client''s decision.', ARRAY['of', 'from', 'on', 'about'], 2, 2, 9),
     ('The bug ___ by the QA team last week.', ARRAY['found', 'was found', 'has find', 'finding'], 1, 2, 10),
-    ('If we had added an index, the query ___ so slow.', ARRAY['isn''t', 'won''t be', 'wouldn''t have been', 'hasn''t been'], 2, 3, 11),
-    ('Choose the most polite way to disagree in a code review.', ARRAY['You are wrong.', 'This is bad code.', 'Change this.', 'I see your point, but I think this may be slower.'], 3, 3, 12);
+    ('If we had added an index, the query ___ so slow.', ARRAY['wouldn''t have been', 'isn''t', 'won''t be', 'hasn''t been'], 0, 3, 11),
+    ('Choose the most polite way to disagree in a code review.', ARRAY['You are wrong.', 'This is bad code.', 'I see your point, but I think this may be slower.', 'Change this.'], 2, 3, 12);
