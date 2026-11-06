@@ -11,9 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -34,6 +36,9 @@ class LearnxApiIT {
 
     @Value("${local.server.port}")
     int port;
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     private record Reply(int status, JsonNode body, String setCookie) {}
 
@@ -109,14 +114,28 @@ class LearnxApiIT {
     }
 
     @Test
-    void refreshRotatesTokensAndReuseRevokesEverySession() throws Exception {
+    void refreshRotatesTokensAndLateReuseRevokesEverySession() throws Exception {
         Account account = register();
         Reply rotated = call("POST", "/auth/refresh", null, account.cookie(), null);
         assertThat(rotated.status()).isEqualTo(200);
         assertThat(rotated.setCookie()).isNotEqualTo(account.cookie());
 
+        jdbc.update("UPDATE refresh_tokens SET rotated_at = rotated_at - interval '1 minute' WHERE rotated_at IS NOT NULL");
+
         assertThat(call("POST", "/auth/refresh", null, account.cookie(), null).status()).isEqualTo(401);
         assertThat(call("POST", "/auth/refresh", null, rotated.setCookie(), null).status()).isEqualTo(401);
+    }
+
+    @Test
+    void refreshCancelledByAReloadDoesNotSignTheUserOut() throws Exception {
+        Account account = register();
+        // The server rotated, but the browser never received the new cookie and retries with the old one.
+        Reply lostResponse = call("POST", "/auth/refresh", null, account.cookie(), null);
+        Reply retry = call("POST", "/auth/refresh", null, account.cookie(), null);
+        assertThat(retry.status()).isEqualTo(200);
+        assertThat(retry.setCookie()).isNotEqualTo(account.cookie());
+        assertThat(call("POST", "/auth/refresh", null, retry.setCookie(), null).status()).isEqualTo(200);
+        assertThat(call("POST", "/auth/refresh", null, lostResponse.setCookie(), null).status()).isEqualTo(200);
     }
 
     @Test
@@ -262,6 +281,46 @@ class LearnxApiIT {
         assertThat(remaining.get("members").size()).isEqualTo(1);
         assertThat(call("DELETE", "/squads/me", member.token(), null).status()).isEqualTo(204);
         assertThat(call("POST", "/squads/join", register().token(), Map.of("inviteCode", code)).status()).isEqualTo(404);
+    }
+
+    @Test
+    void videosRequireAuthenticationAndAreSeeded() throws Exception {
+        assertThat(call("GET", "/videos", null, null).status()).isEqualTo(401);
+        Reply videos = call("GET", "/videos", register().token(), null);
+        assertThat(videos.body().size()).isEqualTo(7);
+        for (JsonNode video : videos.body()) {
+            assertThat(video.get("youtubeId").asString()).hasSize(11);
+            assertThat(video.get("durationSeconds").asInt()).isLessThanOrEqualTo(600);
+        }
+    }
+
+    @Test
+    void completingAVideoIsIdempotentAndFeedsReviewsStreakAndSquad() throws Exception {
+        Account account = register();
+        call("POST", "/squads", account.token(), Map.of("name", "Watchers"));
+        String id = call("GET", "/videos", account.token(), null).body().get(0).get("id").asString();
+
+        Reply detail = call("GET", "/videos/" + id, account.token(), null);
+        assertThat(detail.body().get("phrases").size()).isEqualTo(3);
+        assertThat(detail.body().get("video").has("completedAt")).isFalse();
+
+        JsonNode first = call("POST", "/videos/" + id + "/complete", account.token(), null).body();
+        assertThat(first.get("firstCompletion").asBoolean()).isTrue();
+        assertThat(first.get("phrasesScheduled").asInt()).isEqualTo(3);
+        JsonNode second = call("POST", "/videos/" + id + "/complete", account.token(), null).body();
+        assertThat(second.get("firstCompletion").asBoolean()).isFalse();
+        assertThat(second.get("phrasesScheduled").asInt()).isZero();
+
+        assertThat(call("GET", "/today", account.token(), null).body().get("streak").asInt()).isEqualTo(1);
+        assertThat(call("GET", "/squads/me", account.token(), null).body().get("incident").get("points").asInt())
+                .isEqualTo(3);
+        assertThat(call("GET", "/videos/" + id, account.token(), null).body().get("video").has("completedAt")).isTrue();
+    }
+
+    @Test
+    void unknownVideoIsNotFound() throws Exception {
+        String path = "/videos/" + UUID.randomUUID();
+        assertThat(call("GET", path, register().token(), null).status()).isEqualTo(404);
     }
 
     @Test

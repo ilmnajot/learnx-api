@@ -38,6 +38,7 @@ Code is organised by feature. Each feature owns its controller, service and MyBa
 | `ai` | `AiTutor` port with Claude, rule-based and fallback implementations, plus daily quota |
 | `writing` | "Fix my message"; text is never stored |
 | `game` | Game phrase pools and capped results |
+| `video` | Short YouTube videos with practice phrases |
 | `squad` | Squads, weekly incidents, team streak |
 | `activity` | Streaks; listens to `PracticeRecorded` events |
 | `today` | Read models for the home and progress screens |
@@ -47,7 +48,19 @@ Decisions worth keeping:
 - **Events decouple features.** Lessons, reviews and games publish `PracticeRecorded`. Streaks and squads listen, in the same transaction, so a failure rolls back the whole action.
 - **AI calls run outside transactions**, so a slow provider never holds a database connection.
 - **Stateless and multi-instance safe.** Limits are enforced by atomic SQL or row locks, not process memory.
-- **Refresh tokens rotate.** Only hashes are stored, and reusing an old token revokes all of that user's sessions.
+- **Refresh tokens rotate.** Only hashes are stored, and reusing an old token revokes all of that user's sessions. A token rotated in the last 10 seconds still works, because a page reload can cancel a refresh before the browser saves the new cookie.
+- **Videos are only embedded.** They play through YouTube's official player and are never downloaded or re-hosted. Practice phrases are original, not copied from transcripts.
+
+## Adding a video
+
+Add a Flyway migration that inserts into `videos` and `phrases`, following `V3__videos.sql`. Before adding one:
+
+1. Watch all of it and check it's suitable for a workplace audience.
+2. Confirm that embedding is allowed. A `200` from this URL means it is:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}' 'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=VIDEO_ID&format=json'
+   ```
 
 ## API
 
@@ -64,6 +77,7 @@ All routes are under `/api/v1` and need a bearer token, except the `auth` routes
 | `GET /reviews/due`, `POST /reviews/{phraseId}` | Spaced review |
 | `GET /games/pool`, `POST /games/results` | Games |
 | `POST /writing/improve` | Fix a message |
+| `GET /videos`, `GET /videos/{id}`, `POST /videos/{id}/complete` | Videos |
 | `GET`, `DELETE /squads/me`, `POST /squads`, `POST /squads/join` | Squads |
 
 ## Production

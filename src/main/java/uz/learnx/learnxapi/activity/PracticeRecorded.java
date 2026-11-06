@@ -12,6 +12,7 @@ public record PracticeRecorded(UUID userId, Source source, int points) {
         LESSON,
         ROLEPLAY,
         REVIEW,
-        GAME
+        GAME,
+        VIDEO
     }
 }

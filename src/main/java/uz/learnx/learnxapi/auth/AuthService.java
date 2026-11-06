@@ -23,6 +23,12 @@ public class AuthService {
     static final int MAX_FAILED_LOGINS = 5;
     static final Duration LOCK_DURATION = Duration.ofMinutes(15);
 
+    /**
+     * How long a just-rotated token still works. A reload can cancel a refresh after the server has rotated
+     * the token but before the browser saves the new one, and that must not look like theft.
+     */
+    static final Duration ROTATION_GRACE = Duration.ofSeconds(10);
+
     public record Session(User user, String accessToken, String refreshToken) {}
 
     private final UserMapper users;
@@ -77,7 +83,10 @@ public class AuthService {
         return openSession(user);
     }
 
-    /** Rotates the token. Presenting a revoked token signals theft, so every session of that user is revoked. */
+    /**
+     * Rotates the token. Presenting a revoked token signals theft, so every session of that user is revoked,
+     * unless it was rotated within {@link #ROTATION_GRACE}.
+     */
     public Session refresh(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
             throw invalidSession();
@@ -87,13 +96,16 @@ public class AuthService {
         Optional<Session> session = tx.execute(status -> {
             RefreshToken token = refreshTokens.findForUpdate(tokens.hash(rawToken)).orElseThrow(this::invalidSession);
             if (token.revokedAt() != null) {
+                if (token.rotatedAt() != null && token.rotatedAt().plus(ROTATION_GRACE).isAfter(now)) {
+                    return Optional.of(openSession(users.findById(token.userId()).orElseThrow(this::invalidSession)));
+                }
                 refreshTokens.revokeAllForUser(token.userId(), now);
                 return Optional.<Session>empty();
             }
             if (token.expiresAt().isBefore(now)) {
                 throw invalidSession();
             }
-            refreshTokens.revoke(token.id(), now);
+            refreshTokens.rotate(token.id(), now);
             return Optional.of(openSession(users.findById(token.userId()).orElseThrow(this::invalidSession)));
         });
         return session.orElseThrow(this::invalidSession);
