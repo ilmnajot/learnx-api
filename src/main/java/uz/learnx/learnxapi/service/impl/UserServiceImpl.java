@@ -33,7 +33,8 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public ApiResponse updateProfile(UUID userId, UserDto.UpdateProfileRequest r) {
         validateTimezone(r.timezone());
-        this.userMapper.updateProfile(userId, r.displayName(), r.jobRole(), r.goal(), r.timezone(), r.reminderTime());
+        this.userMapper.updateProfile(userId, r.displayName(), r.jobRole(), r.goal(), r.timezone(), r.reminderTime(),
+                r.course() == null ? null : r.course().name());
         if (Boolean.TRUE.equals(r.onboarded())) {
             this.userMapper.markOnboarded(userId, Instant.now(this.clock));
         }

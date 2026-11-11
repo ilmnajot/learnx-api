@@ -25,7 +25,14 @@ public final class LearningDto {
     public record TopicView(UUID id, String title, List<LessonSummary> lessons) {
     }
 
-    public record LessonDetail(Lesson lesson, List<Phrase> phrases, boolean completed) {
+    /** {@code letter} is only present for lessons of the Arabic alphabet course. */
+    public record LessonDetail(Lesson lesson, List<Phrase> phrases, boolean completed, Letter letter) {
+    }
+
+    /** One letter of the Arabic alphabet, with its four shapes. */
+    public record Letter(UUID lessonId, String glyph, String name, String latin, String hint, String isolatedForm,
+            String initialForm, String medialForm, String finalForm, String say, String word, String wordLatin,
+            String wordMeaning, List<String> similar, String audioUrl) {
     }
 
     public record CompletionResult(boolean firstCompletion, String canDo) {

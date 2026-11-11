@@ -23,7 +23,7 @@ public interface UserMapper {
 
     void updateProfile(@Param("id") UUID id, @Param("displayName") String displayName,
             @Param("jobRole") String jobRole, @Param("goal") String goal, @Param("timezone") String timezone,
-            @Param("reminderTime") LocalTime reminderTime);
+            @Param("reminderTime") LocalTime reminderTime, @Param("course") String course);
 
     void updateLevel(@Param("id") UUID id, @Param("level") String level);
 

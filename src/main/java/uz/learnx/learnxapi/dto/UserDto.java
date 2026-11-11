@@ -8,6 +8,12 @@ public final class UserDto {
     private UserDto() {
     }
 
+    /** What the learner studies. English learners get the full course; Arabic learners start with the alphabet. */
+    public enum Course {
+        ENGLISH,
+        ARABIC_LETTERS
+    }
+
     /** The public shape of a user. Never includes credentials or lockout state. */
     public record UserView(
             UUID id,
@@ -21,12 +27,13 @@ public final class UserDto {
             LocalTime reminderTime,
             boolean onboarded,
             boolean emailVerified,
-            boolean admin
+            boolean admin,
+            String course
     ) {
         public static UserView of(User u) {
             return new UserView(u.id(), u.email(), u.displayName(), u.jobRole(), u.goal(), u.level(),
                     u.nativeLanguage(), u.timezone(), u.reminderTime(), u.onboardedAt() != null,
-                    u.emailVerifiedAt() != null, u.isAdmin());
+                    u.emailVerifiedAt() != null, u.isAdmin(), u.course());
         }
     }
 
@@ -36,7 +43,8 @@ public final class UserDto {
             @Size(max = 200) String goal,
             @Size(max = 64) String timezone,
             LocalTime reminderTime,
-            Boolean onboarded
+            Boolean onboarded,
+            Course course
     ) {
     }
 }

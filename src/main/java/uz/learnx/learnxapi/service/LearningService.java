@@ -19,5 +19,8 @@ public interface LearningService {
 
     List<String> completedCanDos(UUID userId);
 
-    int lessonCount();
+    int lessonCount(UUID userId);
+
+    /** The whole Arabic alphabet, for quizzes that need other letters as wrong answers. */
+    ApiResponse letters();
 }

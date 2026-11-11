@@ -44,6 +44,9 @@ public class RoleplayServiceImpl implements RoleplayService {
     @Override
     public ApiResponse start(UUID userId, UUID lessonId) {
         LearningDto.Lesson lesson = this.learningService.requireLesson(lessonId);
+        if (lesson.aiPersona().isBlank()) {
+            throw ApiException.conflict("roleplay_unavailable", "This lesson has no conversation practice");
+        }
         UUID sessionId = UUID.randomUUID();
         this.roleplayMapper.insertSession(sessionId, userId, lessonId, MAX_TURNS);
         return ApiResponse.created(

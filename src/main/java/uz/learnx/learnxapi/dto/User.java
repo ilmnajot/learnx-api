@@ -20,9 +20,14 @@ public record User(
         Instant lockedUntil,
         Instant emailVerifiedAt,
         String role,
-        Instant bannedAt) {
+        Instant bannedAt,
+        String course) {
 
     public boolean isAdmin() {
         return "ADMIN".equals(role);
+    }
+
+    public boolean learnsArabicLetters() {
+        return UserDto.Course.ARABIC_LETTERS.name().equals(course);
     }
 }

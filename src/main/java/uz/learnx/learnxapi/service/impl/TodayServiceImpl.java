@@ -26,14 +26,14 @@ public class TodayServiceImpl implements TodayService {
         List<String> canDos = this.learningService.completedCanDos(userId);
         return ApiResponse.ok(new TodayDto.TodayView(this.activityService.currentStreak(userId),
                 this.reviewService.dueCount(userId), this.learningService.nextLesson(userId).orElse(null),
-                canDos.size(), this.learningService.lessonCount(), canDos.isEmpty() ? null : canDos.getFirst()));
+                canDos.size(), this.learningService.lessonCount(userId), canDos.isEmpty() ? null : canDos.getFirst()));
     }
 
     @Override
     public ApiResponse progress(UUID userId) {
         List<String> canDos = this.learningService.completedCanDos(userId);
         return ApiResponse.ok(new TodayDto.ProgressView(this.activityService.currentStreak(userId),
-                this.activityService.totalDays(userId), canDos.size(), this.learningService.lessonCount(), canDos,
+                this.activityService.totalDays(userId), canDos.size(), this.learningService.lessonCount(userId), canDos,
                 this.activityService.recentDays(userId, HEATMAP_DAYS)));
     }
 }

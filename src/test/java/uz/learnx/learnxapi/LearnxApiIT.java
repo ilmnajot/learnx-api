@@ -300,6 +300,48 @@ class LearnxApiIT {
     }
 
     @Test
+    void arabicLearnersSeeOnlyTheAlphabetCourse() throws Exception {
+        Account account = register();
+        String token = account.token();
+        Reply chosen = call("PATCH", "/me", token, Map.of("course", "ARABIC_LETTERS", "onboarded", true));
+        assertThat(chosen.body().get("course").asString()).isEqualTo("ARABIC_LETTERS");
+
+        JsonNode topics = call("GET", "/topics", token, null).body();
+        assertThat(topics.size()).isEqualTo(5);
+        int lessons = 0;
+        for (JsonNode topic : topics) lessons += topic.get("lessons").size();
+        assertThat(lessons).isEqualTo(28);
+
+        JsonNode today = call("GET", "/today", token, null).body();
+        assertThat(today.get("totalLessons").asInt()).isEqualTo(28);
+        String alif = today.get("nextLesson").get("id").asString();
+        JsonNode detail = call("GET", "/lessons/" + alif, token, null).body();
+        assertThat(detail.get("letter").get("glyph").asString()).isEqualTo("ا");
+        assertThat(detail.get("phrases").get(0).get("english").asString()).isEqualTo("ا");
+
+        assertThat(call("GET", "/letters", token, null).body().size()).isEqualTo(28);
+        assertThat(call("POST", "/lessons/" + alif + "/roleplay", token, null).body().get("code").asString())
+                .isEqualTo("roleplay_unavailable");
+
+        assertThat(call("POST", "/lessons/" + alif + "/complete", token, null).status()).isEqualTo(200);
+        jdbc.update("UPDATE phrase_reviews SET due_at = now() - interval '1 minute' "
+                + "WHERE user_id = (SELECT id FROM users WHERE email = ?)", account.email());
+        JsonNode due = call("GET", "/reviews/due", token, null).body();
+        assertThat(due.size()).isEqualTo(1);
+        assertThat(due.get(0).get("english").asString()).isEqualTo("ا");
+        assertThat(call("GET", "/games/pool?size=4", token, null).body().toString()).doesNotContain("standup");
+    }
+
+    @Test
+    void englishLearnersDoNotSeeTheAlphabet() throws Exception {
+        String token = register().token();
+        assertThat(call("GET", "/me", token, null).body().get("course").asString()).isEqualTo("ENGLISH");
+        JsonNode today = call("GET", "/today", token, null).body();
+        assertThat(today.get("totalLessons").asInt()).isEqualTo(30);
+        assertThat(call("GET", "/topics", token, null).body().toString()).doesNotContain("Harflar");
+    }
+
+    @Test
     void placementNeverExposesAnswersAndSetsALevel() throws Exception {
         Account account = register();
         Reply questions = call("GET", "/placement/questions", account.token(), null);

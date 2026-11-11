@@ -11,7 +11,8 @@ import uz.learnx.learnxapi.dto.LearningDto;
 @Mapper
 public interface LearningMapper {
 
-    List<LearningDto.Topic> topics();
+    /** Only the topics of the learner's own course. */
+    List<LearningDto.Topic> topics(@Param("userId") UUID userId);
 
     List<LearningDto.LessonSummary> lessonsWithProgress(@Param("userId") UUID userId);
 
@@ -26,5 +27,9 @@ public interface LearningMapper {
 
     List<String> completedCanDos(@Param("userId") UUID userId);
 
-    int lessonCount();
+    int lessonCount(@Param("userId") UUID userId);
+
+    Optional<LearningDto.Letter> findLetter(@Param("lessonId") UUID lessonId);
+
+    List<LearningDto.Letter> letters();
 }

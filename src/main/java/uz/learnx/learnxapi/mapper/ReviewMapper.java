@@ -29,5 +29,5 @@ public interface ReviewMapper {
     List<ReviewDto.DueReview> learnedSample(@Param("userId") UUID userId, @Param("limit") int limit);
 
     /** Starter phrases for learners with too few of their own. */
-    List<ReviewDto.DueReview> starterSample(@Param("limit") int limit);
+    List<ReviewDto.DueReview> starterSample(@Param("userId") UUID userId, @Param("limit") int limit);
 }

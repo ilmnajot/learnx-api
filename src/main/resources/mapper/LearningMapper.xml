@@ -2,13 +2,22 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="uz.learnx.learnxapi.mapper.LearningMapper">
 
+    <!-- Limits lessons (aliased l) to the learner's own course. -->
+    <sql id="ownCourse">
+        JOIN topics t ON t.id = l.topic_id
+        JOIN users u ON u.id = #{userId} AND u.course = t.course
+    </sql>
+
     <select id="topics" resultType="uz.learnx.learnxapi.dto.LearningDto$Topic">
-        SELECT id, title FROM topics ORDER BY position
+        SELECT t.id, t.title
+        FROM topics t JOIN users u ON u.id = #{userId} AND u.course = t.course
+        ORDER BY t.position
     </select>
 
     <select id="lessonsWithProgress" resultType="uz.learnx.learnxapi.dto.LearningDto$LessonSummary">
         SELECT l.id, l.topic_id, l.title, l.can_do, l.est_minutes, p.completed_at
         FROM lessons l
+        <include refid="ownCourse"/>
         LEFT JOIN lesson_progress p ON p.lesson_id = l.id AND p.user_id = #{userId}
         ORDER BY l.position
     </select>
@@ -16,6 +25,7 @@
     <select id="nextLesson" resultType="uz.learnx.learnxapi.dto.LearningDto$LessonSummary">
         SELECT l.id, l.topic_id, l.title, l.can_do, l.est_minutes, NULL::timestamptz AS completed_at
         FROM lessons l
+        <include refid="ownCourse"/>
         WHERE NOT EXISTS (SELECT 1 FROM lesson_progress p WHERE p.lesson_id = l.id AND p.user_id = #{userId})
         ORDER BY l.position
         LIMIT 1
@@ -38,10 +48,28 @@
 
     <select id="completedCanDos" resultType="string">
         SELECT l.can_do FROM lesson_progress p JOIN lessons l ON l.id = p.lesson_id
+        <include refid="ownCourse"/>
         WHERE p.user_id = #{userId} ORDER BY p.completed_at DESC
     </select>
 
     <select id="lessonCount" resultType="int">
-        SELECT count(*) FROM lessons
+        SELECT count(*) FROM lessons l
+        <include refid="ownCourse"/>
+    </select>
+
+    <!-- "similar" is a reserved word in PostgreSQL (as in SIMILAR TO), so it must stay quoted. -->
+    <sql id="letterColumns">
+        lesson_id, glyph, name, latin, hint, isolated_form, initial_form, medial_form, final_form, say, word,
+        word_latin, word_meaning, COALESCE("similar", '{}') AS "similar", audio_url
+    </sql>
+
+    <select id="findLetter" resultType="uz.learnx.learnxapi.dto.LearningDto$Letter">
+        SELECT <include refid="letterColumns"/> FROM letters WHERE lesson_id = #{lessonId}
+    </select>
+
+    <select id="letters" resultType="uz.learnx.learnxapi.dto.LearningDto$Letter">
+        SELECT <include refid="letterColumns"/>
+        FROM letters a JOIN lessons l ON l.id = a.lesson_id
+        ORDER BY l.position
     </select>
 </mapper>

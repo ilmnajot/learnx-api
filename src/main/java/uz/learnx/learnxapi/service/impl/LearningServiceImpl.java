@@ -35,7 +35,7 @@ public class LearningServiceImpl implements LearningService {
     public ApiResponse topics(UUID userId) {
         Map<UUID, List<LearningDto.LessonSummary>> byTopic = this.learningMapper.lessonsWithProgress(userId).stream()
                 .collect(Collectors.groupingBy(LearningDto.LessonSummary::topicId));
-        List<LearningDto.TopicView> topics = this.learningMapper.topics().stream()
+        List<LearningDto.TopicView> topics = this.learningMapper.topics(userId).stream()
                 .map(t -> new LearningDto.TopicView(t.id(), t.title(), byTopic.getOrDefault(t.id(), List.of())))
                 .toList();
         return ApiResponse.ok(topics);
@@ -47,7 +47,8 @@ public class LearningServiceImpl implements LearningService {
         LearningDto.Lesson lesson = requireLesson(lessonId);
         boolean completed = this.learningMapper.lessonsWithProgress(userId).stream()
                 .anyMatch(l -> l.id().equals(lessonId) && l.completedAt() != null);
-        return ApiResponse.ok(new LearningDto.LessonDetail(lesson, this.learningMapper.phrases(lessonId), completed));
+        return ApiResponse.ok(new LearningDto.LessonDetail(lesson, this.learningMapper.phrases(lessonId), completed,
+                this.learningMapper.findLetter(lessonId).orElse(null)));
     }
 
     /** Idempotent: repeating a lesson is welcome practice, but only the first completion earns points. */
@@ -81,7 +82,12 @@ public class LearningServiceImpl implements LearningService {
     }
 
     @Override
-    public int lessonCount() {
-        return this.learningMapper.lessonCount();
+    public int lessonCount(UUID userId) {
+        return this.learningMapper.lessonCount(userId);
+    }
+
+    @Override
+    public ApiResponse letters() {
+        return ApiResponse.ok(this.learningMapper.letters());
     }
 }

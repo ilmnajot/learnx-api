@@ -65,7 +65,7 @@ public class ReviewServiceImpl implements ReviewService {
     public List<ReviewDto.DueReview> gamePool(UUID userId, int size) {
         List<ReviewDto.DueReview> pool = new ArrayList<>(this.reviewMapper.learnedSample(userId, size));
         if (pool.size() < size) {
-            this.reviewMapper.starterSample(size * 2).stream()
+            this.reviewMapper.starterSample(userId, size * 2).stream()
                     .filter(p -> pool.stream().noneMatch(existing -> existing.phraseId().equals(p.phraseId())))
                     .limit(size - pool.size())
                     .forEach(pool::add);

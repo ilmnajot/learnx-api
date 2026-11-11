@@ -28,6 +28,12 @@ public class LearningController {
         return this.learningService.lesson(userId, id);
     }
 
+    // the Arabic alphabet, in teaching order
+    @GetMapping("/letters")
+    public ApiResponse letters() {
+        return this.learningService.letters();
+    }
+
     @PostMapping("/lessons/{id}/complete")
     public ApiResponse complete(@CurrentUserId UUID userId, @PathVariable UUID id) {
         return this.learningService.complete(userId, id);

@@ -4,7 +4,8 @@
 
     <sql id="columns">
         id, email, password_hash, display_name, job_role, goal, level, native_language, timezone,
-        reminder_time, onboarded_at, failed_login_attempts, locked_until, email_verified_at, role, banned_at
+        reminder_time, onboarded_at, failed_login_attempts, locked_until, email_verified_at, role, banned_at,
+        course
     </sql>
 
     <select id="findById" resultType="uz.learnx.learnxapi.dto.User">
@@ -31,6 +32,7 @@
             goal          = COALESCE(#{goal}, goal),
             timezone      = COALESCE(#{timezone}, timezone),
             reminder_time = COALESCE(#{reminderTime,jdbcType=TIME}, reminder_time),
+            course        = COALESCE(#{course}, course),
             updated_at    = now()
         WHERE id = #{id}
     </update>
