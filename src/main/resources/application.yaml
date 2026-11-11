@@ -4,15 +4,15 @@ spring:
   config:
     import: optional:file:.env[.properties]
   datasource:
-    url: ${LEARNX_DB_URL:jdbc:postgresql://localhost:5433/learnx}
-    username: ${LEARNX_DB_USERNAME:learnx}
-    password: ${LEARNX_DB_PASSWORD:learnx_dev}
+    url: ${LEARNX_DB_URL:jdbc:postgresql://169.58.85.252:2026/learnxdb}
+    username: ${LEARNX_DB_USERNAME:learnxuser}
+    password: ${LEARNX_DB_PASSWORD:learnxpsw}
     hikari:
       maximum-pool-size: ${LEARNX_DB_POOL_SIZE:20}
       minimum-idle: 2
       connection-timeout: 5000
   flyway:
-    enabled: true
+    enabled: false
   jackson:
     default-property-inclusion: non_null
   threads:
@@ -43,7 +43,7 @@ server:
     include-stacktrace: never
 
 mybatis:
-  mapper-locations: classpath:mapper/*.xml
+  mapper-locations: classpath:mapper//*.xml
   type-handlers-package: uz.learnx.learnxapi.config.mybatis
   configuration:
     map-underscore-to-camel-case: true
