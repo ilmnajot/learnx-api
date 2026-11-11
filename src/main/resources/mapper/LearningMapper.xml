@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.LearningMapper">
+
+    <select id="topics" resultType="uz.learnx.learnxapi.dto.LearningDto$Topic">
+        SELECT id, title FROM topics ORDER BY position
+    </select>
+
+    <select id="lessonsWithProgress" resultType="uz.learnx.learnxapi.dto.LearningDto$LessonSummary">
+        SELECT l.id, l.topic_id, l.title, l.can_do, l.est_minutes, p.completed_at
+        FROM lessons l
+        LEFT JOIN lesson_progress p ON p.lesson_id = l.id AND p.user_id = #{userId}
+        ORDER BY l.position
+    </select>
+
+    <select id="nextLesson" resultType="uz.learnx.learnxapi.dto.LearningDto$LessonSummary">
+        SELECT l.id, l.topic_id, l.title, l.can_do, l.est_minutes, NULL::timestamptz AS completed_at
+        FROM lessons l
+        WHERE NOT EXISTS (SELECT 1 FROM lesson_progress p WHERE p.lesson_id = l.id AND p.user_id = #{userId})
+        ORDER BY l.position
+        LIMIT 1
+    </select>
+
+    <select id="findLesson" resultType="uz.learnx.learnxapi.dto.LearningDto$Lesson">
+        SELECT id, title, can_do, scenario, ai_persona, opening_line, est_minutes
+        FROM lessons WHERE id = #{id}
+    </select>
+
+    <select id="phrases" resultType="uz.learnx.learnxapi.dto.LearningDto$Phrase">
+        SELECT id, english, translation, example FROM phrases
+        WHERE lesson_id = #{lessonId} ORDER BY position
+    </select>
+
+    <insert id="markCompleted">
+        INSERT INTO lesson_progress (user_id, lesson_id, completed_at) VALUES (#{userId}, #{lessonId}, #{at})
+        ON CONFLICT DO NOTHING
+    </insert>
+
+    <select id="completedCanDos" resultType="string">
+        SELECT l.can_do FROM lesson_progress p JOIN lessons l ON l.id = p.lesson_id
+        WHERE p.user_id = #{userId} ORDER BY p.completed_at DESC
+    </select>
+
+    <select id="lessonCount" resultType="int">
+        SELECT count(*) FROM lessons
+    </select>
+</mapper>

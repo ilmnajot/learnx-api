@@ -7,11 +7,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import uz.learnx.learnxapi.activity.StreakCalculator;
-import uz.learnx.learnxapi.ai.AiTutor;
-import uz.learnx.learnxapi.ai.FallbackTutor;
-import uz.learnx.learnxapi.ai.RuleBasedTutor;
-import uz.learnx.learnxapi.review.ReviewScheduler;
+import uz.learnx.learnxapi.utils.StreakCalculator;
+import uz.learnx.learnxapi.integration.AiTutor;
+import uz.learnx.learnxapi.integration.FallbackTutor;
+import uz.learnx.learnxapi.integration.RuleBasedTutor;
+import uz.learnx.learnxapi.utils.ReviewScheduler;
 
 class DomainRulesTest {
 

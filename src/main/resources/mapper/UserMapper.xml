@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="uz.learnx.learnxapi.user.UserMapper">
+<mapper namespace="uz.learnx.learnxapi.mapper.UserMapper">
 
     <sql id="columns">
         id, email, password_hash, display_name, job_role, goal, level, native_language, timezone,
         reminder_time, onboarded_at, failed_login_attempts, locked_until, email_verified_at, role, banned_at
     </sql>
 
-    <select id="findById" resultType="uz.learnx.learnxapi.user.User">
+    <select id="findById" resultType="uz.learnx.learnxapi.dto.User">
         SELECT <include refid="columns"/> FROM users WHERE id = #{id}
     </select>
 
-    <select id="findByEmail" resultType="uz.learnx.learnxapi.user.User">
+    <select id="findByEmail" resultType="uz.learnx.learnxapi.dto.User">
         SELECT <include refid="columns"/> FROM users WHERE email = #{email}
     </select>
 
@@ -62,5 +62,11 @@
     <update id="clearFailedLogins">
         UPDATE users SET failed_login_attempts = 0, locked_until = NULL
         WHERE id = #{id} AND (failed_login_attempts &lt;&gt; 0 OR locked_until IS NOT NULL)
+    </update>
+
+    <update id="promoteToAdmin">
+        UPDATE users SET role = 'ADMIN', updated_at = now()
+        WHERE role &lt;&gt; 'ADMIN' AND email_verified_at IS NOT NULL AND email IN
+        <foreach collection="emails" item="email" open="(" separator="," close=")">#{email}</foreach>
     </update>
 </mapper>

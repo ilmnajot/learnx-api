@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.RateLimitMapper">
+
+    <!-- An INSERT that returns the new count, so it must never be served from MyBatis' cache. -->
+    <select id="hit" resultType="int" flushCache="true" useCache="false">
+        INSERT INTO rate_limits (bucket, window_start) VALUES (#{bucket}, #{windowStart})
+        ON CONFLICT (bucket, window_start) DO UPDATE SET hits = rate_limits.hits + 1
+        RETURNING hits
+    </select>
+
+    <delete id="deleteOlderThan">
+        DELETE FROM rate_limits WHERE window_start &lt; #{before}
+    </delete>
+</mapper>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.ReviewMapper">
+
+    <insert id="schedule">
+        INSERT INTO phrase_reviews (user_id, phrase_id, due_at) VALUES
+        <foreach collection="phraseIds" item="phraseId" separator=",">
+            (#{userId}, #{phraseId}, #{dueAt})
+        </foreach>
+        ON CONFLICT DO NOTHING
+    </insert>
+
+    <select id="due" resultType="uz.learnx.learnxapi.dto.ReviewDto$DueReview">
+        SELECT p.id AS phrase_id, p.english, p.translation, p.example
+        FROM phrase_reviews r JOIN phrases p ON p.id = r.phrase_id
+        WHERE r.user_id = #{userId} AND r.due_at &lt;= #{now}
+        ORDER BY r.due_at
+        LIMIT #{limit}
+    </select>
+
+    <select id="dueCount" resultType="int">
+        SELECT count(*) FROM phrase_reviews WHERE user_id = #{userId} AND due_at &lt;= #{now}
+    </select>
+
+    <select id="findForUpdate" resultType="uz.learnx.learnxapi.dto.ReviewDto$ReviewRow">
+        SELECT ease, interval_days, repetitions, lapses FROM phrase_reviews
+        WHERE user_id = #{userId} AND phrase_id = #{phraseId}
+        FOR UPDATE
+    </select>
+
+    <update id="update">
+        UPDATE phrase_reviews
+        SET ease = #{ease}, interval_days = #{intervalDays}, repetitions = #{repetitions}, lapses = #{lapses},
+            due_at = #{dueAt}, reviewed_at = #{now}
+        WHERE user_id = #{userId} AND phrase_id = #{phraseId}
+    </update>
+
+    <select id="learnedSample" resultType="uz.learnx.learnxapi.dto.ReviewDto$DueReview">
+        SELECT p.id AS phrase_id, p.english, p.translation, p.example
+        FROM phrase_reviews r JOIN phrases p ON p.id = r.phrase_id
+        WHERE r.user_id = #{userId}
+        ORDER BY random()
+        LIMIT #{limit}
+    </select>
+
+    <select id="starterSample" resultType="uz.learnx.learnxapi.dto.ReviewDto$DueReview">
+        SELECT p.id AS phrase_id, p.english, p.translation, p.example
+        FROM phrases p JOIN lessons l ON l.id = p.lesson_id
+        ORDER BY l.position, p.position
+        LIMIT #{limit}
+    </select>
+</mapper>

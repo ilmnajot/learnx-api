@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.RoleplayMapper">
+
+    <insert id="insertSession">
+        INSERT INTO roleplay_sessions (id, user_id, lesson_id, max_turns)
+        VALUES (#{id}, #{userId}, #{lessonId}, #{maxTurns})
+    </insert>
+
+    <select id="findSession" resultType="uz.learnx.learnxapi.dto.RoleplayDto$Session">
+        SELECT id, user_id, lesson_id, max_turns, turn_count, completed_at
+        FROM roleplay_sessions WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <select id="turns" resultType="uz.learnx.learnxapi.dto.RoleplayDto$Turn">
+        SELECT turn_number, prompt_line, user_text, improved_text, tips, reply_line, provider
+        FROM roleplay_turns WHERE session_id = #{sessionId} ORDER BY turn_number
+    </select>
+
+    <insert id="insertTurn">
+        INSERT INTO roleplay_turns
+            (session_id, turn_number, prompt_line, user_text, improved_text, tips, reply_line, provider)
+        VALUES (#{sessionId}, #{turn.turnNumber}, #{turn.promptLine}, #{turn.userText}, #{turn.improvedText},
+            #{turn.tips,typeHandler=uz.learnx.learnxapi.config.mybatis.StringListTypeHandler},
+            #{turn.replyLine}, #{turn.provider})
+    </insert>
+
+    <update id="advance">
+        UPDATE roleplay_sessions
+        SET turn_count = #{turnNumber},
+            completed_at = CASE WHEN #{turnNumber} >= max_turns THEN #{now} ELSE completed_at END
+        WHERE id = #{sessionId}
+    </update>
+</mapper>

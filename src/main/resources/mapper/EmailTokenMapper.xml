@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.EmailTokenMapper">
+
+    <insert id="insert">
+        INSERT INTO email_tokens (user_id, purpose, token_hash, expires_at, created_at)
+        VALUES (#{userId}, #{purpose}, #{tokenHash}, #{expiresAt}, #{now})
+    </insert>
+
+    <update id="retireOpen">
+        UPDATE email_tokens SET used_at = #{now}
+        WHERE user_id = #{userId} AND purpose = #{purpose} AND used_at IS NULL
+    </update>
+
+    <select id="countSince" resultType="int">
+        SELECT count(*) FROM email_tokens
+        WHERE user_id = #{userId} AND purpose = #{purpose} AND created_at > #{since}
+    </select>
+
+    <!-- An UPDATE that returns a row, so it must never be served from MyBatis' cache. -->
+    <select id="consume" resultType="java.util.UUID" flushCache="true" useCache="false">
+        UPDATE email_tokens SET used_at = #{now}
+        WHERE token_hash = #{tokenHash} AND purpose = #{purpose} AND used_at IS NULL AND expires_at > #{now}
+        RETURNING user_id
+    </select>
+
+    <delete id="deleteExpired">
+        DELETE FROM email_tokens WHERE expires_at &lt; #{before}
+    </delete>
+</mapper>

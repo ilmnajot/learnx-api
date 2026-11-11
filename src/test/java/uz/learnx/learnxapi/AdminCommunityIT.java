@@ -63,6 +63,15 @@ class AdminCommunityIT {
 
     private record Account(UUID id, String token, String email) {}
 
+    /** Successful responses carry their payload in `data`; errors carry `code` and `fields` in `meta`. */
+    private static JsonNode unwrap(String raw) {
+        if (raw.isBlank()) return JSON.nullNode();
+        JsonNode body = JSON.readTree(raw);
+        if (body.has("data")) return body.get("data");
+        if (body.has("meta")) return body.get("meta");
+        return JSON.nullNode();
+    }
+
     private Reply call(String method, String path, String token, Object body) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1" + path));
         request.method(method, body == null
@@ -71,7 +80,7 @@ class AdminCommunityIT {
         request.header("Content-Type", "application/json");
         if (token != null) request.header("Authorization", "Bearer " + token);
         HttpResponse<String> response = http.send(request.build(), HttpResponse.BodyHandlers.ofString());
-        return new Reply(response.statusCode(), response.body().isBlank() ? JSON.nullNode() : JSON.readTree(response.body()));
+        return new Reply(response.statusCode(), unwrap(response.body()));
     }
 
     private Account register(String email, boolean verified) throws Exception {
@@ -138,7 +147,7 @@ class AdminCommunityIT {
         assertThat(call("GET", "/admin/stats", owner.token(), null).status()).isEqualTo(403);
 
         String token = emails.awaitToken("owner@example.com", 1);
-        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", token)).status()).isEqualTo(204);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", token)).status()).isEqualTo(200);
 
         assertThat(call("GET", "/me", owner.token(), null).body().get("admin").asBoolean()).isTrue();
         assertThat(call("GET", "/admin/stats", owner.token(), null).status()).isEqualTo(200);
@@ -150,7 +159,7 @@ class AdminCommunityIT {
         Account second = admin();
         assertThat(call("GET", "/admin/stats", second.token(), null).status()).isEqualTo(200);
         assertThat(call("POST", "/admin/users/" + second.id() + "/role", first.token(), Map.of("admin", false)).status())
-                .isEqualTo(204);
+                .isEqualTo(200);
         assertThat(call("GET", "/admin/stats", second.token(), null).status()).isEqualTo(403);
     }
 
@@ -169,13 +178,13 @@ class AdminCommunityIT {
         Account target = learner();
         Map<String, String> login = Map.of("email", target.email(), "password", "test-password-1");
 
-        assertThat(call("POST", "/admin/users/" + target.id() + "/ban", admin.token(), null).status()).isEqualTo(204);
+        assertThat(call("POST", "/admin/users/" + target.id() + "/ban", admin.token(), null).status()).isEqualTo(200);
         Reply blocked = call("POST", "/auth/login", null, login);
         assertThat(blocked.status()).isEqualTo(403);
         assertThat(blocked.body().get("code").asString()).isEqualTo("account_banned");
         assertThat(call("POST", "/writing/improve", target.token(), Map.of("text", "hello there")).status()).isEqualTo(403);
 
-        assertThat(call("POST", "/admin/users/" + target.id() + "/unban", admin.token(), null).status()).isEqualTo(204);
+        assertThat(call("POST", "/admin/users/" + target.id() + "/unban", admin.token(), null).status()).isEqualTo(200);
         assertThat(call("POST", "/auth/login", null, login).status()).isEqualTo(200);
     }
 
@@ -202,7 +211,7 @@ class AdminCommunityIT {
         String code = call("POST", "/squads", owner.token(), Map.of("name", "Testers")).body().get("inviteCode").asString();
         call("POST", "/squads/join", member.token(), Map.of("inviteCode", code));
 
-        assertThat(call("DELETE", "/admin/users/" + owner.id(), admin.token(), null).status()).isEqualTo(204);
+        assertThat(call("DELETE", "/admin/users/" + owner.id(), admin.token(), null).status()).isEqualTo(200);
 
         assertThat(call("GET", "/squads/me", member.token(), null).body().get("owner").asBoolean()).isTrue();
         assertThat(call("POST", "/auth/login", null, Map.of("email", owner.email(), "password", "test-password-1")).status())
@@ -225,7 +234,7 @@ class AdminCommunityIT {
         String id = queue.get(0).get("id").asString();
         assertThat(queue.get(0).get("email").asString()).isEqualTo(learner.email());
         assertThat(call("POST", "/admin/comments/" + id + "/status", admin.token(), Map.of("status", "APPROVED")).status())
-                .isEqualTo(204);
+                .isEqualTo(200);
 
         String page = call("GET", "/public/site", null, null).body().toString();
         assertThat(page).contains("speak at standups", "Aziz Karimov");

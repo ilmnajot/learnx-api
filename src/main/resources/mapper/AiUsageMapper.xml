@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.AiUsageMapper">
+
+    <!-- The WHERE on the conflict branch skips the update once the limit is reached, so 0 rows means "no". -->
+    <update id="consume">
+        INSERT INTO ai_usage (user_id, usage_date, requests) VALUES (#{userId}, #{date}, 1)
+        ON CONFLICT (user_id, usage_date)
+        DO UPDATE SET requests = ai_usage.requests + 1 WHERE ai_usage.requests &lt; #{limit}
+    </update>
+
+    <insert id="consumeGlobal">
+        INSERT INTO ai_global_usage (usage_date, requests) VALUES (#{date}, 1)
+        ON CONFLICT (usage_date)
+        DO UPDATE SET requests = ai_global_usage.requests + 1 WHERE ai_global_usage.requests &lt; #{limit}
+    </insert>
+</mapper>

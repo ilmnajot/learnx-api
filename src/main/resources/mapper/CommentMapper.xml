@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.CommentMapper">
+
+    <insert id="upsert">
+        INSERT INTO comments (user_id, body, rating) VALUES (#{userId}, #{body}, #{rating})
+        ON CONFLICT (user_id) DO UPDATE SET body = EXCLUDED.body, rating = EXCLUDED.rating, status = 'PENDING',
+            updated_at = now(), moderated_at = NULL
+    </insert>
+
+    <select id="own" resultType="uz.learnx.learnxapi.dto.CommentDto$OwnComment">
+        SELECT body, rating, status, updated_at FROM comments WHERE user_id = #{userId}
+    </select>
+
+    <delete id="deleteOwn">
+        DELETE FROM comments WHERE user_id = #{userId}
+    </delete>
+
+    <select id="approved" resultType="uz.learnx.learnxapi.dto.CommentDto$PublicComment">
+        SELECT c.id, u.display_name, u.job_role, u.level, c.body, c.rating, c.updated_at
+        FROM comments c JOIN users u ON u.id = c.user_id
+        WHERE c.status = 'APPROVED' AND u.banned_at IS NULL
+        ORDER BY c.updated_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="forModeration" resultType="uz.learnx.learnxapi.dto.CommentDto$AdminComment">
+        SELECT c.id, u.email, u.display_name, c.body, c.rating, c.status, c.updated_at
+        FROM comments c JOIN users u ON u.id = c.user_id
+        <if test="status != null">WHERE c.status = #{status}</if>
+        ORDER BY c.updated_at DESC
+        LIMIT 200
+    </select>
+
+    <update id="setStatus">
+        UPDATE comments SET status = #{status}, moderated_at = #{at} WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM comments WHERE id = #{id}
+    </delete>
+</mapper>

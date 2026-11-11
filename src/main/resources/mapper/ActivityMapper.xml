@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.ActivityMapper">
+
+    <insert id="record">
+        INSERT INTO activity_days (user_id, activity_date, points) VALUES (#{userId}, #{date}, #{points})
+        ON CONFLICT (user_id, activity_date)
+        DO UPDATE SET events = activity_days.events + 1, points = activity_days.points + EXCLUDED.points
+    </insert>
+
+    <select id="activeDays" resultType="java.time.LocalDate">
+        SELECT activity_date FROM activity_days
+        WHERE user_id = #{userId} AND activity_date >= #{since}
+        ORDER BY activity_date DESC
+    </select>
+
+    <select id="totalDays" resultType="int">
+        SELECT count(*) FROM activity_days WHERE user_id = #{userId}
+    </select>
+</mapper>

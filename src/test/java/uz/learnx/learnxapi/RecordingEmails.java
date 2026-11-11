@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-import uz.learnx.learnxapi.email.EmailSender;
+import uz.learnx.learnxapi.integration.EmailSender;
 
 /** Captures outgoing email, so tests can follow the links a real person would click. */
 class RecordingEmails implements EmailSender {

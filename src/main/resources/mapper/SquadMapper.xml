@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.SquadMapper">
+
+    <insert id="insertSquad">
+        INSERT INTO squads (id, name, invite_code, owner_id)
+        VALUES (#{id}, #{name}, #{inviteCode}, #{ownerId})
+    </insert>
+
+    <insert id="addMember">
+        INSERT INTO squad_members (squad_id, user_id) VALUES (#{squadId}, #{userId})
+    </insert>
+
+    <select id="findByMember" resultType="uz.learnx.learnxapi.dto.SquadDto$Squad">
+        SELECT s.id, s.name, s.invite_code, s.owner_id
+        FROM squads s JOIN squad_members m ON m.squad_id = s.id
+        WHERE m.user_id = #{userId}
+    </select>
+
+    <select id="findByInviteCodeForUpdate" resultType="uz.learnx.learnxapi.dto.SquadDto$Squad">
+        SELECT id, name, invite_code, owner_id FROM squads WHERE invite_code = #{code} FOR UPDATE
+    </select>
+
+    <select id="lock" resultType="uz.learnx.learnxapi.dto.SquadDto$Squad">
+        SELECT id, name, invite_code, owner_id FROM squads WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <select id="memberCount" resultType="int">
+        SELECT count(*) FROM squad_members WHERE squad_id = #{squadId}
+    </select>
+
+    <delete id="removeMember">
+        DELETE FROM squad_members WHERE squad_id = #{squadId} AND user_id = #{userId}
+    </delete>
+
+    <delete id="deleteSquad">
+        DELETE FROM squads WHERE id = #{id}
+    </delete>
+
+    <update id="transferOwnership">
+        UPDATE squads SET owner_id = (
+            SELECT user_id FROM squad_members WHERE squad_id = #{id} ORDER BY joined_at LIMIT 1)
+        WHERE id = #{id}
+    </update>
+
+    <insert id="ensureIncident">
+        INSERT INTO squad_incidents (squad_id, week_start, title) VALUES (#{squadId}, #{weekStart}, #{title})
+        ON CONFLICT (squad_id, week_start) DO NOTHING
+    </insert>
+
+    <select id="findIncident" resultType="uz.learnx.learnxapi.dto.SquadDto$Incident">
+        SELECT id, title, points FROM squad_incidents WHERE squad_id = #{squadId} AND week_start = #{weekStart}
+    </select>
+
+    <update id="addIncidentPoints">
+        UPDATE squad_incidents SET points = points + #{points} WHERE id = #{incidentId}
+    </update>
+
+    <insert id="addContribution">
+        INSERT INTO squad_contributions (incident_id, user_id, points) VALUES (#{incidentId}, #{userId}, #{points})
+        ON CONFLICT (incident_id, user_id)
+        DO UPDATE SET points = squad_contributions.points + EXCLUDED.points
+    </insert>
+
+    <select id="members" resultType="uz.learnx.learnxapi.dto.SquadDto$MemberRow">
+        SELECT m.user_id, u.display_name, COALESCE(c.points, 0) AS week_points,
+               EXISTS (SELECT 1 FROM activity_days a
+                       WHERE a.user_id = m.user_id AND a.activity_date = #{today}) AS practised_today
+        FROM squad_members m
+        JOIN users u ON u.id = m.user_id
+        LEFT JOIN squad_contributions c ON c.user_id = m.user_id AND c.incident_id = #{incidentId}
+        WHERE m.squad_id = #{squadId}
+        ORDER BY m.joined_at
+    </select>
+
+    <select id="qualifyingDays" resultType="java.time.LocalDate">
+        SELECT a.activity_date
+        FROM activity_days a JOIN squad_members m ON m.user_id = a.user_id
+        WHERE m.squad_id = #{squadId} AND a.activity_date >= #{since}
+        GROUP BY a.activity_date
+        HAVING count(*) >= #{required}
+    </select>
+</mapper>

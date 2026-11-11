@@ -59,6 +59,15 @@ class LearnxApiIT {
 
     private record Account(String token, String cookie, String email) {}
 
+    /** Successful responses carry their payload in `data`; errors carry `code` and `fields` in `meta`. */
+    private static JsonNode unwrap(String raw) {
+        if (raw.isBlank()) return JSON.nullNode();
+        JsonNode body = JSON.readTree(raw);
+        if (body.has("data")) return body.get("data");
+        if (body.has("meta")) return body.get("meta");
+        return JSON.nullNode();
+    }
+
     private Reply call(String method, String path, String token, Object body) throws Exception {
         return call(method, path, token, null, body);
     }
@@ -72,7 +81,7 @@ class LearnxApiIT {
         if (token != null) request.header("Authorization", "Bearer " + token);
         if (cookie != null) request.header("Cookie", cookie);
         HttpResponse<String> response = http.send(request.build(), HttpResponse.BodyHandlers.ofString());
-        JsonNode parsed = response.body().isBlank() ? JSON.nullNode() : JSON.readTree(response.body());
+        JsonNode parsed = unwrap(response.body());
         return new Reply(response.statusCode(), parsed,
                 response.headers().firstValue("Set-Cookie").map(c -> c.split(";")[0]).orElse(null));
     }
@@ -106,7 +115,7 @@ class LearnxApiIT {
         assertThat(call("POST", "/roleplay/" + session + "/turns", account.token(), text).status()).isEqualTo(403);
 
         String token = emails.awaitToken(account.email(), 1);
-        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", token)).status()).isEqualTo(204);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", token)).status()).isEqualTo(200);
 
         assertThat(call("GET", "/me", account.token(), null).body().get("emailVerified").asBoolean()).isTrue();
         assertThat(call("POST", "/writing/improve", account.token(), text).status()).isEqualTo(200);
@@ -136,7 +145,7 @@ class LearnxApiIT {
         assertThat(call("POST", "/me/resend-verification", account.token(), null).status()).isEqualTo(202);
         String second = emails.awaitToken(account.email(), 2);
         assertThat(call("POST", "/auth/verify-email", null, Map.of("token", first)).status()).isEqualTo(400);
-        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", second)).status()).isEqualTo(204);
+        assertThat(call("POST", "/auth/verify-email", null, Map.of("token", second)).status()).isEqualTo(200);
     }
 
     @Test
@@ -160,7 +169,7 @@ class LearnxApiIT {
         assertThat(call("POST", "/auth/reset-password", null, tooShort).status()).isEqualTo(400);
 
         Map<String, String> reset = Map.of("token", token, "password", "brand-new-password");
-        assertThat(call("POST", "/auth/reset-password", null, reset).status()).isEqualTo(204);
+        assertThat(call("POST", "/auth/reset-password", null, reset).status()).isEqualTo(200);
 
         assertThat(call("POST", "/auth/login", null, Map.of("email", account.email(), "password", "test-password-1")).status())
                 .isEqualTo(401);
@@ -277,7 +286,7 @@ class LearnxApiIT {
     @Test
     void logoutRevokesTheRefreshToken() throws Exception {
         Account account = register();
-        assertThat(call("POST", "/auth/logout", null, account.cookie(), null).status()).isEqualTo(204);
+        assertThat(call("POST", "/auth/logout", null, account.cookie(), null).status()).isEqualTo(200);
         assertThat(call("POST", "/auth/refresh", null, account.cookie(), null).status()).isEqualTo(401);
     }
 
@@ -396,7 +405,7 @@ class LearnxApiIT {
     void squadFlowSharesProgressBetweenMembers() throws Exception {
         Account owner = register();
         Account member = register();
-        assertThat(call("GET", "/squads/me", owner.token(), null).status()).isEqualTo(204);
+        assertThat(call("GET", "/squads/me", owner.token(), null).body().isNull()).isTrue();
 
         Reply created = call("POST", "/squads", owner.token(), Map.of("name", "Null Pointers"));
         assertThat(created.status()).isEqualTo(201);
@@ -420,11 +429,11 @@ class LearnxApiIT {
         assertThat(both.get("streak").asInt()).isEqualTo(1);
         assertThat(both.get("incident").get("points").asInt()).isEqualTo(20);
 
-        assertThat(call("DELETE", "/squads/me", owner.token(), null).status()).isEqualTo(204);
+        assertThat(call("DELETE", "/squads/me", owner.token(), null).status()).isEqualTo(200);
         JsonNode remaining = call("GET", "/squads/me", member.token(), null).body();
         assertThat(remaining.get("owner").asBoolean()).isTrue();
         assertThat(remaining.get("members").size()).isEqualTo(1);
-        assertThat(call("DELETE", "/squads/me", member.token(), null).status()).isEqualTo(204);
+        assertThat(call("DELETE", "/squads/me", member.token(), null).status()).isEqualTo(200);
         assertThat(call("POST", "/squads/join", register().token(), Map.of("inviteCode", code)).status()).isEqualTo(404);
     }
 

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="uz.learnx.learnxapi.mapper.AdminMapper">
+
+    <sql id="userSearch">
+        <where>
+            <if test="search != null">
+                u.email ILIKE #{search} ESCAPE '\' OR u.display_name ILIKE #{search} ESCAPE '\'
+            </if>
+        </where>
+    </sql>
+
+    <select id="users" resultType="uz.learnx.learnxapi.dto.AdminDto$UserRow">
+        SELECT u.id, u.email, u.display_name, u.job_role, u.level, u.role, u.email_verified_at, u.banned_at,
+               u.created_at,
+               (SELECT count(*) FROM lesson_progress p WHERE p.user_id = u.id)::int AS lessons_completed,
+               (SELECT max(a.activity_date) FROM activity_days a WHERE a.user_id = u.id) AS last_active
+        FROM users u
+        <include refid="userSearch"/>
+        ORDER BY u.created_at DESC, u.id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countUsers" resultType="int">
+        SELECT count(*) FROM users u
+        <include refid="userSearch"/>
+    </select>
+
+    <select id="totals" resultType="uz.learnx.learnxapi.dto.AdminDto$Totals">
+        SELECT
+          (SELECT count(*) FROM users)::int AS users,
+          (SELECT count(*) FROM users WHERE email_verified_at IS NOT NULL)::int AS verified,
+          (SELECT count(*) FROM users WHERE banned_at IS NOT NULL)::int AS banned,
+          (SELECT count(*) FROM users WHERE created_at >= #{weekAgo})::int AS new_this_week,
+          (SELECT count(DISTINCT user_id) FROM activity_days WHERE activity_date = #{today})::int AS active_today,
+          (SELECT count(DISTINCT user_id) FROM activity_days WHERE activity_date >= #{weekAgoDate})::int
+              AS active_this_week,
+          (SELECT count(*) FROM lesson_progress)::int AS lessons_completed,
+          (SELECT count(*) FROM video_progress)::int AS videos_completed,
+          (SELECT count(*) FROM squads)::int AS squads,
+          (SELECT count(*) FROM comments WHERE status = 'PENDING')::int AS pending_comments,
+          COALESCE((SELECT requests FROM ai_global_usage WHERE usage_date = #{today}), 0) AS ai_requests_today
+    </select>
+
+    <select id="levels" resultType="uz.learnx.learnxapi.dto.AdminDto$LevelCount">
+        SELECT level, count(*)::int AS count FROM users
+        WHERE level IS NOT NULL AND banned_at IS NULL
+        GROUP BY level ORDER BY level
+    </select>
+
+    <select id="signupsByDay" resultType="uz.learnx.learnxapi.dto.AdminDto$DayCount">
+        SELECT (created_at AT TIME ZONE 'UTC')::date AS day, count(*)::int AS count FROM users
+        WHERE created_at >= #{since}
+        GROUP BY 1 ORDER BY 1
+    </select>
+
+    <update id="setBanned">
+        UPDATE users SET banned_at = #{at}, updated_at = now() WHERE id = #{id}
+    </update>
+
+    <update id="setRole">
+        UPDATE users SET role = #{role}, updated_at = now() WHERE id = #{id}
+    </update>
+
+    <delete id="deleteUser">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+    <select id="videos" resultType="uz.learnx.learnxapi.dto.AdminDto$VideoRow">
+        SELECT v.id, v.title, v.channel, v.category, v.youtube_id, v.hidden_at,
+               (SELECT count(*) FROM video_progress p WHERE p.video_id = v.id)::int AS completions
+        FROM videos v ORDER BY v.position
+    </select>
+
+    <update id="setVideoHidden">
+        UPDATE videos SET hidden_at = #{at} WHERE id = #{id}
+    </update>
+
+    <insert id="audit">
+        INSERT INTO admin_audit (admin_id, admin_email, action, target)
+        VALUES (#{adminId}, #{adminEmail}, #{action}, #{target})
+    </insert>
+
+    <select id="auditLog" resultType="uz.learnx.learnxapi.dto.AdminDto$AuditRow">
+        SELECT id, admin_email, action, target, created_at FROM admin_audit
+        ORDER BY created_at DESC LIMIT #{limit}
+    </select>
+
+    <select id="emailOf" resultType="string">
+        SELECT email FROM users WHERE id = #{id}
+    </select>
+</mapper>

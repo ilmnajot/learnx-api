@@ -74,7 +74,7 @@ class RateLimitIT {
         }
         HttpResponse<String> blocked = post("/auth/register", address, registerBody(), null);
         assertThat(blocked.statusCode()).isEqualTo(429);
-        assertThat(JSON.readTree(blocked.body()).get("code").asString()).isEqualTo("rate_limited");
+        assertThat(JSON.readTree(blocked.body()).get("meta").get("code").asString()).isEqualTo("rate_limited");
         assertThat(blocked.headers().firstValueAsLong("Retry-After").orElse(0)).isPositive();
     }
 
@@ -131,7 +131,7 @@ class RateLimitIT {
             if (result.statusCode() == 200) {
                 allowed++;
             } else {
-                lastCode = JSON.readTree(result.body()).get("code").asString();
+                lastCode = JSON.readTree(result.body()).get("meta").get("code").asString();
             }
         }
         assertThat(allowed).isEqualTo(2);
